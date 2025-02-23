@@ -1,9 +1,6 @@
 from argparse import ArgumentParser
 from functools import lru_cache
 from typing import List, Tuple
-import os
-from datetime import datetime
-import time
 
 import numpy
 
@@ -550,57 +547,34 @@ def get_reference_frame(source_face : Face, target_face : Face, temp_vision_fram
 
 
 def process_frame(inputs : FaceSwapperInputs) -> VisionFrame:
-	start_time = time.time()
-	
 	reference_faces = inputs.get('reference_faces')
 	source_face = inputs.get('source_face')
 	target_vision_frame = inputs.get('target_vision_frame')
-	
-	# Time the face detection specifically
-	detect_start = time.time()
-	many_faces = sort_and_filter_faces(get_many_faces([target_vision_frame]))
-	detect_end = time.time()
-	detect_time = detect_end - detect_start
-	
-	# Process the faces as normal
+	many_faces = sort_and_filter_faces(get_many_faces([ target_vision_frame ]))
+
 	if state_manager.get_item('face_selector_mode') == 'many':
 		if many_faces:
 			for target_face in many_faces:
 				target_vision_frame = swap_face(source_face, target_face, target_vision_frame)
-	elif state_manager.get_item('face_selector_mode') == 'one':
+	if state_manager.get_item('face_selector_mode') == 'one':
 		target_face = get_one_face(many_faces)
 		if target_face:
 			target_vision_frame = swap_face(source_face, target_face, target_vision_frame)
-	elif state_manager.get_item('face_selector_mode') == 'reference':
+	if state_manager.get_item('face_selector_mode') == 'reference':
 		similar_faces = find_similar_faces(many_faces, reference_faces, state_manager.get_item('reference_face_distance'))
 		if similar_faces:
 			for similar_face in similar_faces:
 				target_vision_frame = swap_face(source_face, similar_face, target_vision_frame)
-	
-	end_time = time.time()
-	total_time = end_time - start_time
-	
-	print(f"Frame processing stats:")
-	print(f"Face detection time: {detect_time:.3f} seconds")
-	print(f"Total frame time: {total_time:.3f} seconds")
-	print(f"Number of angles checked: {len(state_manager.get_item('face_detector_angles'))}")
-	print(f"Faces detected: {len(many_faces)}")
-	print("-" * 50)
-	
 	return target_vision_frame
 
 
 def process_frames(source_paths : List[str], queue_payloads : List[QueuePayload], update_progress : UpdateProgress) -> None:
-	# Create a directory for undetected frames if it doesn't exist
-	undetected_frames_dir = "undetected_frames"
-	os.makedirs(undetected_frames_dir, exist_ok=True)
-	
 	reference_faces = get_reference_faces() if 'reference' in state_manager.get_item('face_selector_mode') else None
 	source_frames = read_static_images(source_paths)
 	source_faces = []
 
 	for source_frame in source_frames:
-		temp_faces = get_many_faces([source_frame])
+		temp_faces = get_many_faces([ source_frame ])
 		temp_faces = sort_faces_by_order(temp_faces, 'large-small')
 		if temp_faces:
 			source_faces.append(get_first(temp_faces))
@@ -609,20 +583,8 @@ def process_frames(source_paths : List[str], queue_payloads : List[QueuePayload]
 	for queue_payload in process_manager.manage(queue_payloads):
 		target_vision_path = queue_payload['frame_path']
 		target_vision_frame = read_image(target_vision_path)
-		
-		# Check for face detection
-		target_faces = get_many_faces([target_vision_frame])
-		if not target_faces:
-			# Save the problematic frame
-			timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-			frame_name = os.path.basename(target_vision_path)
-			save_path = os.path.join(undetected_frames_dir, f"undetected_{timestamp}_{frame_name}")
-			write_image(save_path, target_vision_frame)
-			print(f"No faces detected in frame: {target_vision_path}")
-			print(f"Frame saved to: {save_path}")
-			continue
-		
-		output_vision_frame = process_frame({
+		output_vision_frame = process_frame(
+		{
 			'reference_faces': reference_faces,
 			'source_face': source_face,
 			'target_vision_frame': target_vision_frame
