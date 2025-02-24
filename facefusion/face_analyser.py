@@ -11,6 +11,7 @@ from facefusion.face_landmarker import detect_face_landmarks, estimate_face_land
 from facefusion.face_recognizer import calc_embedding
 from facefusion.face_store import get_static_faces, set_static_faces
 from facefusion.typing import BoundingBox, Face, FaceLandmark5, FaceLandmarkSet, FaceScoreSet, Score, VisionFrame
+from facefusion.vision import count_video_frame_total, get_video_frame
 
 
 def create_faces(vision_frame : VisionFrame, bounding_boxes : List[BoundingBox], face_scores : List[Score], face_landmarks_5 : List[FaceLandmark5]) -> List[Face]:
@@ -92,9 +93,77 @@ def get_average_face(faces : List[Face]) -> Optional[Face]:
 		)
 	return None
 
+def get_alignment_of_faces(vision_frame: VisionFrame) -> float:
+	"""
+	gets as input the middle frame or in the case of an image the image itself
+	sends this to AI model which return the angle 
+	we return in this function the angle for the face (can also be 0 and this is the angle we use for the get_many_faces_function)
+	what is the best vision model - Gemini 2.0 Flash seems to pretty good at this task 
+	"""
+	import os
+	import cv2
+	from litellm import completion
+	import base64
+	from dotenv import load_dotenv
+
+	load_dotenv()
+
+	# Save frame temporarily
+	output_path = "middle_frame.png"
+	cv2.imwrite(output_path, vision_frame)
+
+	# Convert image to base64
+	def encode_image_to_base64(image_path):
+		with open(image_path, "rb") as image_file:
+			return base64.b64encode(image_file.read()).decode('utf-8')
+
+	base64_image = encode_image_to_base64(output_path)
+
+	os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+
+	# Make API call to vision model
+	response = completion(
+		model="gpt-4o-mini",
+		messages=[
+			{
+				"role": "user",
+				"content": [
+					{
+						"type": "text",
+						"text": "Is the person (or persons) in that image vertically or horizontally aligned? Respond only with the value; if vertical or horizontal is not appropriate or it's not clear, respond with 0 but remember nothing else."
+					},
+					{
+						"type": "image_url",
+						"image_url": {
+							"url": f"data:image/jpeg;base64,{base64_image}"
+						}
+					}
+				]
+			}
+		],
+	)
+
+	# Clean up temporary file
+	os.remove(output_path)
+
+	# Convert response to angle
+	alignment = response.choices[0].message.content.strip().lower()
+	return 90 if alignment == "horizontal" else 0
 
 def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
+	print(f"Face detection threshold: {state_manager.get_item('face_detector_score')}")
 	many_faces : List[Face] = []
+
+	# Get total frames from the video
+	video_path = state_manager.get_item('target_path')
+	total_frames = count_video_frame_total(video_path)
+	middle_frame_number = total_frames // 2
+	# Get the middle frame directly from the video
+	middle_frame = get_video_frame(video_path, middle_frame_number)
+	alignment_of_faces = get_alignment_of_faces(middle_frame)
+
+	import sys
+	sys.exit()
 
 	for vision_frame in vision_frames:
 		if numpy.any(vision_frame):
@@ -106,6 +175,7 @@ def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
 				all_face_scores = []
 				all_face_landmarks_5 = []
 
+				#here instead of detecting faces for each angle we want to detect faces only when the value was below a certain threshold
 				for face_detector_angle in state_manager.get_item('face_detector_angles'):
 					if face_detector_angle == 0:
 						bounding_boxes, face_scores, face_landmarks_5 = detect_faces(vision_frame)
