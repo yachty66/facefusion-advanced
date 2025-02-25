@@ -108,16 +108,9 @@ def get_alignment_of_faces(vision_frame: VisionFrame) -> float:
 
 	load_dotenv()
 
-	# Save frame temporarily
-	output_path = "middle_frame.png"
-	cv2.imwrite(output_path, vision_frame)
-
-	# Convert image to base64
-	def encode_image_to_base64(image_path):
-		with open(image_path, "rb") as image_file:
-			return base64.b64encode(image_file.read()).decode('utf-8')
-
-	base64_image = encode_image_to_base64(output_path)
+	# Convert frame to PNG in memory and encode to base64
+	_, buffer = cv2.imencode('.png', vision_frame)
+	base64_image = base64.b64encode(buffer).decode('utf-8')
 
 	os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
@@ -143,8 +136,7 @@ def get_alignment_of_faces(vision_frame: VisionFrame) -> float:
 		],
 	)
 
-	# Clean up temporary file
-	os.remove(output_path)
+	print(response)
 
 	# Convert response to angle
 	alignment = response.choices[0].message.content.strip().lower()
