@@ -94,12 +94,6 @@ def get_average_face(faces : List[Face]) -> Optional[Face]:
 	return None
 
 def get_alignment_of_faces(vision_frame: VisionFrame) -> float:
-	"""
-	gets as input the middle frame or in the case of an image the image itself
-	sends this to AI model which return the angle 
-	we return in this function the angle for the face (can also be 0 and this is the angle we use for the get_many_faces_function)
-	what is the best vision model - Gemini 2.0 Flash seems to pretty good at this task 
-	"""
 	import os
 	import cv2
 	from litellm import completion
@@ -123,7 +117,7 @@ def get_alignment_of_faces(vision_frame: VisionFrame) -> float:
 				"content": [
 					{
 						"type": "text",
-						"text": "Is the person (or persons) in that image vertically or horizontally aligned? Respond only with the value; if vertical or horizontal is not appropriate or it's not clear, respond with 0 but remember nothing else."
+						"text": "Is the person (or persons) in that image vertically or horizontally aligned? Respond only with the value; if vertical respond with 0 and if horizontal respond with 90. If vertical or horizontal is not appropriate or it's not clear, respond with False but remember nothing else."
 					},
 					{
 						"type": "image_url",
@@ -135,12 +129,11 @@ def get_alignment_of_faces(vision_frame: VisionFrame) -> float:
 			}
 		],
 	)
-
-	print(response)
-
-	# Convert response to angle
-	alignment = response.choices[0].message.content.strip().lower()
-	return 90 if alignment == "horizontal" else 0
+	print(response.choices[0].message.content.strip())
+	if response.choices[0].message.content.strip() == "90":
+		return 90
+	else:
+		return 0
 
 def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
 	print(f"Face detection threshold: {state_manager.get_item('face_detector_score')}")
@@ -149,10 +142,18 @@ def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
 	# Get total frames from the video
 	video_path = state_manager.get_item('target_path')
 	total_frames = count_video_frame_total(video_path)
-	middle_frame_number = total_frames // 2
-	# Get the middle frame directly from the video
-	middle_frame = get_video_frame(video_path, middle_frame_number)
-	alignment_of_faces = get_alignment_of_faces(middle_frame)
+	# Case where input is image and no video
+	if total_frames == 0:
+		import cv2
+		# Read the target image directly since it's not a video
+		target_image = cv2.imread(state_manager.get_item('target_path'))
+		alignment_of_faces = get_alignment_of_faces(target_image)
+	else:
+		middle_frame_number = total_frames // 2
+		# Get the middle frame directly from the video
+		middle_frame = get_video_frame(video_path, middle_frame_number)
+		alignment_of_faces = get_alignment_of_faces(middle_frame)
+	print("alignment of face is: ", alignment_of_faces)
 
 	import sys
 	sys.exit()
