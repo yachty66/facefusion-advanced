@@ -129,14 +129,13 @@ def get_alignment_of_faces(vision_frame: VisionFrame) -> float:
 			}
 		],
 	)
-	print(response.choices[0].message.content.strip())
 	if response.choices[0].message.content.strip() == "90":
-		return 90
+		#we are setting this value to 270 for now because with our example image this will make the position to be vertical - later we need to find out into which direction we need to turn the image
+		return 270
 	else:
 		return 0
 
 def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
-	print(f"Face detection threshold: {state_manager.get_item('face_detector_score')}")
 	many_faces : List[Face] = []
 
 	# Get total frames from the video
@@ -153,10 +152,9 @@ def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
 		# Get the middle frame directly from the video
 		middle_frame = get_video_frame(video_path, middle_frame_number)
 		alignment_of_faces = get_alignment_of_faces(middle_frame)
-	print("alignment of face is: ", alignment_of_faces)
 
-	import sys
-	sys.exit()
+	# Update the face detector angles based on alignment
+	state_manager.set_item('face_detector_angles', [int(alignment_of_faces)])
 
 	for vision_frame in vision_frames:
 		if numpy.any(vision_frame):
@@ -168,7 +166,7 @@ def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
 				all_face_scores = []
 				all_face_landmarks_5 = []
 
-				#here instead of detecting faces for each angle we want to detect faces only when the value was below a certain threshold
+				# Now using the updated angles from state_manager
 				for face_detector_angle in state_manager.get_item('face_detector_angles'):
 					if face_detector_angle == 0:
 						bounding_boxes, face_scores, face_landmarks_5 = detect_faces(vision_frame)
