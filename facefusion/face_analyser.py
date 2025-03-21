@@ -136,13 +136,24 @@ def get_alignment_of_faces(vision_frame: VisionFrame) -> float:
 		return 0
 
 def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
+	"""
+	for some reason the function is getting called four times altough it only needs to be called once when i have only one single frame
+
+	get_many_faces is called on source and target image and in the processing step again
+
+	our goal is it to detect faces in the video and to detect if they are correctly aligned or not. ie every time there is a video we want to detect if a face is horizontal and 
+	if this is the case we want to. the model takes the image and then decides if
+	"""
+	print("get_many_faces is getting called")
 	many_faces : List[Face] = []
 
 	# Get total frames from the video
 	video_path = state_manager.get_item('target_path')
 	total_frames = count_video_frame_total(video_path)
+	print("total frames: ", total_frames)
 	# Case where input is image and no video
 	if total_frames == 0:
+		print("total frames is 0")
 		import cv2
 		# Read the target image directly since it's not a video
 		target_image = cv2.imread(state_manager.get_item('target_path'))
