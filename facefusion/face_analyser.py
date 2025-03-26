@@ -12,6 +12,7 @@ from facefusion.face_recognizer import calc_embedding
 from facefusion.face_store import get_static_faces, set_static_faces
 from facefusion.typing import BoundingBox, Face, FaceLandmark5, FaceLandmarkSet, FaceScoreSet, Score, VisionFrame
 
+_frame_counter = 0
 
 def create_faces(vision_frame : VisionFrame, bounding_boxes : List[BoundingBox], face_scores : List[Score], face_landmarks_5 : List[FaceLandmark5]) -> List[Face]:
 	faces = []
@@ -92,71 +93,59 @@ def get_average_face(faces : List[Face]) -> Optional[Face]:
 		)
 	return None
 
-
-def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
-	"""
-	1. find the pos where the frame is not getting detected
-	2. print debug statment at this position
-	3. integrate function call to check if we need to check if the frame 
-	"""
-	many_faces : List[Face] = []
-
+#17.82
+#17.43
+#17.53 - with dynamic recognition
+#18.22
+def get_many_faces(vision_frames: List[VisionFrame]) -> List[Face]:
+	global _frame_counter
+	many_faces: List[Face] = []
+	last_successful_angle = 0  # Start with 0 for first frame
+	
 	for index, vision_frame in enumerate(vision_frames):
-		print("len(vision_frame): ", len(vision_frame))			
-		if numpy.any(vision_frame):
-			static_faces = get_static_faces(vision_frame)
-			if static_faces:
-				many_faces.extend(static_faces)
+		current_frame = _frame_counter
+		_frame_counter += 1
+		print(f"Processing frame {current_frame} (call index: {index})")
+		if not numpy.any(vision_frame):
+			continue
+			
+		# Check cache first
+		static_faces = get_static_faces(vision_frame)
+		if static_faces:
+			many_faces.extend(static_faces)
+			continue
+		
+		# Start with the last successful angle
+		angles_to_try = [last_successful_angle]
+		# Add remaining angles in a sensible order
+		if last_successful_angle == 0:
+			angles_to_try.extend([90, 270])
+		elif last_successful_angle == 90:
+			angles_to_try.extend([0, 270])
+		else:  # last_successful_angle == 270
+			angles_to_try.extend([90, 0])
+			
+		faces_found = False
+		for angle in angles_to_try:
+			print(f"Trying angle {angle} (last successful was {last_successful_angle})")
+			state_manager.set_item('face_detector_angles', [angle])
+			
+			if angle == 0:
+				bounding_boxes, face_scores, face_landmarks_5 = detect_faces(vision_frame)
 			else:
-				all_bounding_boxes = []
-				all_face_scores = []
-				all_face_landmarks_5 = []
-
-				for face_detector_angle in state_manager.get_item('face_detector_angles'):
-					if face_detector_angle == 0:
-						bounding_boxes, face_scores, face_landmarks_5 = detect_faces(vision_frame)
-					else:
-						bounding_boxes, face_scores, face_landmarks_5 = detect_rotated_faces(vision_frame, face_detector_angle)
-					all_bounding_boxes.extend(bounding_boxes)
-					all_face_scores.extend(face_scores)
-					all_face_landmarks_5.extend(face_landmarks_5)
-
-				if all_bounding_boxes and all_face_scores and all_face_landmarks_5 and state_manager.get_item('face_detector_score') > 0:
-					faces = create_faces(vision_frame, all_bounding_boxes, all_face_scores, all_face_landmarks_5)
-
-					if faces:
-						many_faces.extend(faces)
-						set_static_faces(vision_frame, faces)
-					else:
-						print(f"No faces detected in frame {index}")
-
-	if not many_faces:
-		print("No faces detected in any of the frames")
-		"""
-		what do i need to do now - every time we dont detect the face we want to run the 90 and 270 command
-
-		we dont want to run this command when we have the 
-
-		lets make a test video with 5 frames maybe?
-
-		1. run video swap command
-		2. in the case a face is not getting detected rerun this frame with the 90 and 270 command
-		3. and then rerun 
-
-
+				bounding_boxes, face_scores, face_landmarks_5 = detect_rotated_faces(vision_frame, angle)
+			
+			if bounding_boxes and face_scores and face_landmarks_5 and state_manager.get_item('face_detector_score') > 0:
+				faces = create_faces(vision_frame, bounding_boxes, face_scores, face_landmarks_5)
+				if faces:
+					many_faces.extend(faces)
+					set_static_faces(vision_frame, faces)
+					last_successful_angle = angle  # Update for next frame
+					print(f"Found faces at angle {angle}")
+					faces_found = True
+					break
 		
-		
+		if not faces_found:
+			print(f"No faces detected in frame {index} after trying all angles")
 
-		if we dont detect the face then we have the problem that we dont need 
-
-		
-		in this case i need to call the functions which will detect the faces in the frame and then
-
-		the question is how exactly can i integrate this function now so that it makes sense here? 
-
-		when the detection fails the first time or 
-
-		
-		"""
-		return []
 	return many_faces

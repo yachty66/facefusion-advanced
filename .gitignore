@@ -1,7 +1,6 @@
-__pycache__
-.assets
-.caches
-.jobs
-.idea
-.vscode
-.env
+*.mp4
+*.png
+*.jpg
+*.csv
+*.json
+timing_data/
