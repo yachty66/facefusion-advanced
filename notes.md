@@ -196,3 +196,5 @@ ffmpeg -i superman_4sec.mp4 -c:v libx264 -pix_fmt yuv420p -vf "format=yuv420p,sc
 superman_4sec_fixed.mp4
 
 1. make sure that the angle is getting detected ntt
+
+need to detect all the faces in the video, how can we make the. 
