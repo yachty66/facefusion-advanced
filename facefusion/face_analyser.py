@@ -139,6 +139,11 @@ def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
 
 		lets make a test video with 5 frames maybe?
 
+
+		every time a frame is not getting detected i want now to run the 
+
+		ok now the problem we are having is that we have the 
+
 		1. run video swap command
 		2. in the case a face is not getting detected rerun this frame with the 90 and 270 command
 		3. and then rerun 
