@@ -173,5 +173,7 @@ python facefusion.py headless-run \
 
 when running this command at which position does the error happen? i think at the 
 
+ffmpeg -i superman_4sec.mp4 -c:v libx264 -pix_fmt yuv420p -vf "format=yuv420p,scale=trunc(iw/2)*2:trunc(ih/2)*2" -movflags +faststart 
+superman_4sec_fixed.mp4
 
-ffmpeg -i superman_4sec.mp4 -c:v libx264 -pix_fmt yuv420p -vf "format=yuv420p,scale=trunc(iw/2)*2:trunc(ih/2)*2" -movflags +faststart superman_4sec_fixed.mp4
+1. make sure that the angle is getting detected ntt

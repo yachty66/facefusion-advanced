@@ -92,88 +92,52 @@ def get_average_face(faces : List[Face]) -> Optional[Face]:
 		)
 	return None
 
+#17.82
+#17.43
+#17.53 - with dynamic recognition
+#18.22
 
 def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
 	many_faces : List[Face] = []
-
+	last_successful_angle = 0  # Track the last angle that successfully detected faces
+	
 	for index, vision_frame in enumerate(vision_frames):
-		if numpy.any(vision_frame):
-			static_faces = get_static_faces(vision_frame)
-			if static_faces:
-				many_faces.extend(static_faces)
-			else:
-				all_bounding_boxes = []
-				all_face_scores = []
-				all_face_landmarks_5 = []
-
-				for face_detector_angle in state_manager.get_item('face_detector_angles'):
-					if face_detector_angle == 0:
-						bounding_boxes, face_scores, face_landmarks_5 = detect_faces(vision_frame)
-					else:
-						bounding_boxes, face_scores, face_landmarks_5 = detect_rotated_faces(vision_frame, face_detector_angle)
-					all_bounding_boxes.extend(bounding_boxes)
-					all_face_scores.extend(face_scores)
-					all_face_landmarks_5.extend(face_landmarks_5)
-
-				if all_bounding_boxes and all_face_scores and all_face_landmarks_5 and state_manager.get_item('face_detector_score') > 0:
-					faces = create_faces(vision_frame, all_bounding_boxes, all_face_scores, all_face_landmarks_5)
-
-					if faces:
-						many_faces.extend(faces)
-						set_static_faces(vision_frame, faces)
-					else:
-						print(f"No faces detected in frame {index}")
-
-	if not many_faces:
-		print("No faces detected in the frame, trying with 90 degrees")
-		# Try with 90 degrees first
-		state_manager.set_item('face_detector_angles', [90])
-		
-		for vision_frame in vision_frames:
-			if numpy.any(vision_frame):
-				all_bounding_boxes = []
-				all_face_scores = []
-				all_face_landmarks_5 = []
-				
-				for face_detector_angle in state_manager.get_item('face_detector_angles'):
-					print("Retrying with angle:", face_detector_angle)
-					bounding_boxes, face_scores, face_landmarks_5 = detect_rotated_faces(vision_frame, face_detector_angle)
-					all_bounding_boxes.extend(bounding_boxes)
-					all_face_scores.extend(face_scores)
-					all_face_landmarks_5.extend(face_landmarks_5)
-				
-				if all_bounding_boxes and all_face_scores and all_face_landmarks_5 and state_manager.get_item('face_detector_score') > 0:
-					faces = create_faces(vision_frame, all_bounding_boxes, all_face_scores, all_face_landmarks_5)
-					if faces:
-						many_faces.extend(faces)
-						return many_faces
-
-		# If 90 degrees failed, try 270 degrees
-		if not many_faces:
-			print("90 degrees failed, trying with 270 degrees")
-			state_manager.set_item('face_detector_angles', [270])
+		print(f"Processing frame {index}")
+		if not numpy.any(vision_frame):
+			continue
 			
-			for vision_frame in vision_frames:
-				if numpy.any(vision_frame):
-					all_bounding_boxes = []
-					all_face_scores = []
-					all_face_landmarks_5 = []
-					
-					for face_detector_angle in state_manager.get_item('face_detector_angles'):
-						print("Retrying with angle:", face_detector_angle)
-						bounding_boxes, face_scores, face_landmarks_5 = detect_rotated_faces(vision_frame, face_detector_angle)
-						all_bounding_boxes.extend(bounding_boxes)
-						all_face_scores.extend(face_scores)
-						all_face_landmarks_5.extend(face_landmarks_5)
-					
-					if all_bounding_boxes and all_face_scores and all_face_landmarks_5 and state_manager.get_item('face_detector_score') > 0:
-						faces = create_faces(vision_frame, all_bounding_boxes, all_face_scores, all_face_landmarks_5)
-						if faces:
-							many_faces.extend(faces)
-							return many_faces
+		# Check cache first
+		static_faces = get_static_faces(vision_frame)
+		if static_faces:
+			many_faces.extend(static_faces)
+			continue
 		
-		print("No faces detected after trying all angles")
-		return []
+		# Try angles starting with the last successful one
+		angles_to_try = [last_successful_angle]
+		if last_successful_angle == 0:
+			angles_to_try.extend([90, 270])
+		elif last_successful_angle == 90:
+			angles_to_try.extend([270, 0])
+		else:  # last_successful_angle == 270
+			angles_to_try.extend([90, 0])
+			
+		faces_found = False
+		for angle in angles_to_try:
+			print(f"Trying angle {angle} for frame {index} (last successful: {last_successful_angle})")
+			state_manager.set_item('face_detector_angles', [angle])
+			
+			bounding_boxes, face_scores, face_landmarks_5 = detect_rotated_faces(vision_frame, angle) if angle != 0 else detect_faces(vision_frame)
+			
+			if bounding_boxes and face_scores and face_landmarks_5 and state_manager.get_item('face_detector_score') > 0:
+				faces = create_faces(vision_frame, bounding_boxes, face_scores, face_landmarks_5)
+				if faces:
+					many_faces.extend(faces)
+					set_static_faces(vision_frame, faces)
+					last_successful_angle = angle  # Update the last successful angle
+					faces_found = True
+					break  # Exit angle loop if faces found
+		
+		if not faces_found:
+			print(f"No faces detected in frame {index} after trying all angles")
+
 	return many_faces
-
-
