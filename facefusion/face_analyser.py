@@ -94,11 +94,6 @@ def get_average_face(faces : List[Face]) -> Optional[Face]:
 
 
 def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
-	"""
-	1. find the pos where the frame is not getting detected
-	2. print debug statment at this position
-	3. integrate function call to check if we need to check if the frame 
-	"""
 	many_faces : List[Face] = []
 
 	for index, vision_frame in enumerate(vision_frames):
