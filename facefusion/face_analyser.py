@@ -11,7 +11,6 @@ from facefusion.face_landmarker import detect_face_landmarks, estimate_face_land
 from facefusion.face_recognizer import calc_embedding
 from facefusion.face_store import get_static_faces, set_static_faces
 from facefusion.typing import BoundingBox, Face, FaceLandmark5, FaceLandmarkSet, FaceScoreSet, Score, VisionFrame
-from facefusion.vision import count_video_frame_total, get_video_frame
 
 
 def create_faces(vision_frame : VisionFrame, bounding_boxes : List[BoundingBox], face_scores : List[Score], face_landmarks_5 : List[FaceLandmark5]) -> List[Face]:
@@ -93,81 +92,17 @@ def get_average_face(faces : List[Face]) -> Optional[Face]:
 		)
 	return None
 
-def get_alignment_of_faces(vision_frame: VisionFrame) -> float:
-	import os
-	import cv2
-	from litellm import completion
-	import base64
-	from dotenv import load_dotenv
-
-	load_dotenv()
-
-	# Convert frame to PNG in memory and encode to base64
-	_, buffer = cv2.imencode('.png', vision_frame)
-	base64_image = base64.b64encode(buffer).decode('utf-8')
-
-	os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-
-	# Make API call to vision model
-	response = completion(
-		model="gpt-4o-mini",
-		messages=[
-			{
-				"role": "user",
-				"content": [
-					{
-						"type": "text",
-						"text": "Is the person (or persons) in that image vertically or horizontally aligned? Respond only with the value; if vertical respond with 0 and if horizontal respond with 90. If vertical or horizontal is not appropriate or it's not clear, respond with False but remember nothing else."
-					},
-					{
-						"type": "image_url",
-						"image_url": {
-							"url": f"data:image/jpeg;base64,{base64_image}"
-						}
-					}
-				]
-			}
-		],
-	)
-	if response.choices[0].message.content.strip() == "90":
-		#we are setting this value to 270 for now because with our example image this will make the position to be vertical - later we need to find out into which direction we need to turn the image
-		return 270
-	else:
-		return 0
 
 def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
 	"""
-	for some reason the function is getting called four times altough it only needs to be called once when i have only one single frame
-
-	get_many_faces is called on source and target image and in the processing step again
-
-	our goal is it to detect faces in the video and to detect if they are correctly aligned or not. ie every time there is a video we want to detect if a face is horizontal and 
-	if this is the case we want to. the model takes the image and then decides if
+	1. find the pos where the frame is not getting detected
+	2. print debug statment at this position
+	3. integrate function call to check if we need to check if the frame 
 	"""
-	print("get_many_faces is getting called")
 	many_faces : List[Face] = []
 
-	# Get total frames from the video
-	video_path = state_manager.get_item('target_path')
-	total_frames = count_video_frame_total(video_path)
-	print("total frames: ", total_frames)
-	# Case where input is image and no video
-	if total_frames == 0:
-		print("total frames is 0")
-		import cv2
-		# Read the target image directly since it's not a video
-		target_image = cv2.imread(state_manager.get_item('target_path'))
-		alignment_of_faces = get_alignment_of_faces(target_image)
-	else:
-		middle_frame_number = total_frames // 2
-		# Get the middle frame directly from the video
-		middle_frame = get_video_frame(video_path, middle_frame_number)
-		alignment_of_faces = get_alignment_of_faces(middle_frame)
-
-	# Update the face detector angles based on alignment
-	state_manager.set_item('face_detector_angles', [int(alignment_of_faces)])
-
 	for vision_frame in vision_frames:
+		print("len(vision_frame): ", len(vision_frame))			
 		if numpy.any(vision_frame):
 			static_faces = get_static_faces(vision_frame)
 			if static_faces:
@@ -177,7 +112,6 @@ def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
 				all_face_scores = []
 				all_face_landmarks_5 = []
 
-				# Now using the updated angles from state_manager
 				for face_detector_angle in state_manager.get_item('face_detector_angles'):
 					if face_detector_angle == 0:
 						bounding_boxes, face_scores, face_landmarks_5 = detect_faces(vision_frame)
@@ -193,4 +127,20 @@ def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
 					if faces:
 						many_faces.extend(faces)
 						set_static_faces(vision_frame, faces)
+	if not many_faces:
+
+		print("No faces detected in any of the frame")
+		"""
+		if we dont detect the face then we have the problem that we dont need 
+
+		
+		in this case i need to call the functions which will detect the faces in the frame and then
+
+		the question is how exactly can i integrate this function now so that it makes sense here? 
+
+		when the detection fails the first time or 
+
+		
+		"""
+		return []
 	return many_faces
