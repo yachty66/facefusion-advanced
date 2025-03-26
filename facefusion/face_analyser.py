@@ -102,7 +102,6 @@ def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
 	many_faces : List[Face] = []
 
 	for index, vision_frame in enumerate(vision_frames):
-		print("len(vision_frame): ", len(vision_frame))			
 		if numpy.any(vision_frame):
 			static_faces = get_static_faces(vision_frame)
 			if static_faces:
@@ -131,37 +130,55 @@ def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
 						print(f"No faces detected in frame {index}")
 
 	if not many_faces:
-		print("No faces detected in any of the frames")
-		"""
-		what do i need to do now - every time we dont detect the face we want to run the 90 and 270 command
-
-		we dont want to run this command when we have the 
-
-		lets make a test video with 5 frames maybe?
-
-
-		every time a frame is not getting detected i want now to run the 
-
-		ok now the problem we are having is that we have the 
-
-		1. run video swap command
-		2. in the case a face is not getting detected rerun this frame with the 90 and 270 command
-		3. and then rerun 
-
-
+		print("No faces detected in the frame, trying with 90 degrees")
+		# Try with 90 degrees first
+		state_manager.set_item('face_detector_angles', [90])
 		
+		for vision_frame in vision_frames:
+			if numpy.any(vision_frame):
+				all_bounding_boxes = []
+				all_face_scores = []
+				all_face_landmarks_5 = []
+				
+				for face_detector_angle in state_manager.get_item('face_detector_angles'):
+					print("Retrying with angle:", face_detector_angle)
+					bounding_boxes, face_scores, face_landmarks_5 = detect_rotated_faces(vision_frame, face_detector_angle)
+					all_bounding_boxes.extend(bounding_boxes)
+					all_face_scores.extend(face_scores)
+					all_face_landmarks_5.extend(face_landmarks_5)
+				
+				if all_bounding_boxes and all_face_scores and all_face_landmarks_5 and state_manager.get_item('face_detector_score') > 0:
+					faces = create_faces(vision_frame, all_bounding_boxes, all_face_scores, all_face_landmarks_5)
+					if faces:
+						many_faces.extend(faces)
+						return many_faces
+
+		# If 90 degrees failed, try 270 degrees
+		if not many_faces:
+			print("90 degrees failed, trying with 270 degrees")
+			state_manager.set_item('face_detector_angles', [270])
+			
+			for vision_frame in vision_frames:
+				if numpy.any(vision_frame):
+					all_bounding_boxes = []
+					all_face_scores = []
+					all_face_landmarks_5 = []
+					
+					for face_detector_angle in state_manager.get_item('face_detector_angles'):
+						print("Retrying with angle:", face_detector_angle)
+						bounding_boxes, face_scores, face_landmarks_5 = detect_rotated_faces(vision_frame, face_detector_angle)
+						all_bounding_boxes.extend(bounding_boxes)
+						all_face_scores.extend(face_scores)
+						all_face_landmarks_5.extend(face_landmarks_5)
+					
+					if all_bounding_boxes and all_face_scores and all_face_landmarks_5 and state_manager.get_item('face_detector_score') > 0:
+						faces = create_faces(vision_frame, all_bounding_boxes, all_face_scores, all_face_landmarks_5)
+						if faces:
+							many_faces.extend(faces)
+							return many_faces
 		
-
-		if we dont detect the face then we have the problem that we dont need 
-
-		
-		in this case i need to call the functions which will detect the faces in the frame and then
-
-		the question is how exactly can i integrate this function now so that it makes sense here? 
-
-		when the detection fails the first time or 
-
-		
-		"""
+		print("No faces detected after trying all angles")
 		return []
 	return many_faces
+
+

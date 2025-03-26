@@ -139,7 +139,7 @@ python facefusion.py headless-run \
     --temp-frame-format png \
     --face-selector-mode many \
     --face-mask-types box occlusion \
-    --processors face_swapper face_enhancer \
+    --processors face_swapper \
     --face-enhancer-model gfpgan_1.4 \
     --face-enhancer-blend 80 \
     --face-swapper-model inswapper_128 \
