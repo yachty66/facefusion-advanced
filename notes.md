@@ -148,6 +148,25 @@ python facefusion.py headless-run \
     -t /Users/maxhager/projects/facefusion-advanced/superman_fixed.mp4 \
     -o /Users/maxhager/projects/facefusion-advanced/result_new.mp4
 
+
+python facefusion.py headless-run \
+    --keep-temp \
+    --log-level debug \
+    --execution-providers cpu \
+    --execution-thread-count 16 \
+    --execution-queue-count 2 \
+    --temp-frame-format png \
+    --face-selector-mode many \
+    --face-mask-types box occlusion \
+    --processors face_swapper \
+    --face-enhancer-model gfpgan_1.4 \
+    --face-enhancer-blend 80 \
+    --face-swapper-model inswapper_128 \
+    --face-detector-model retinaface \
+    -s /Users/maxhager/projects/facefusion-advanced/source.png \
+    -t /Users/maxhager/projects/facefusion-advanced/superman_4sec_fixed.mp4 \
+    -o /Users/maxhager/projects/facefusion-advanced/result_new.mp4
+
 this seems to work so the problem is that an error occurs with the original video 
 
 so in the case the command throws and error we want ot run on

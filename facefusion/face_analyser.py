@@ -96,10 +96,9 @@ def get_average_face(faces : List[Face]) -> Optional[Face]:
 #17.43
 #17.53 - with dynamic recognition
 #18.22
-def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
-	"""alright le"""
-	many_faces : List[Face] = []
-	last_successful_angle = 0  # Track the last angle that successfully detected faces
+def get_many_faces(vision_frames: List[VisionFrame]) -> List[Face]:
+	many_faces: List[Face] = []
+	last_successful_angle = 0  # Start with 0 for first frame
 	
 	for index, vision_frame in enumerate(vision_frames):
 		print(f"Processing frame {index}")
@@ -112,30 +111,35 @@ def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
 			many_faces.extend(static_faces)
 			continue
 		
-		# Try angles starting with the last successful one
+		# Start with the last successful angle
 		angles_to_try = [last_successful_angle]
+		# Add remaining angles in a sensible order
 		if last_successful_angle == 0:
 			angles_to_try.extend([90, 270])
 		elif last_successful_angle == 90:
-			angles_to_try.extend([270, 0])
+			angles_to_try.extend([0, 270])
 		else:  # last_successful_angle == 270
 			angles_to_try.extend([90, 0])
 			
 		faces_found = False
 		for angle in angles_to_try:
-			print(f"Trying angle {angle} for frame {index} (last successful: {last_successful_angle})")
+			print(f"Trying angle {angle} (last successful was {last_successful_angle})")
 			state_manager.set_item('face_detector_angles', [angle])
 			
-			bounding_boxes, face_scores, face_landmarks_5 = detect_rotated_faces(vision_frame, angle) if angle != 0 else detect_faces(vision_frame)
+			if angle == 0:
+				bounding_boxes, face_scores, face_landmarks_5 = detect_faces(vision_frame)
+			else:
+				bounding_boxes, face_scores, face_landmarks_5 = detect_rotated_faces(vision_frame, angle)
 			
 			if bounding_boxes and face_scores and face_landmarks_5 and state_manager.get_item('face_detector_score') > 0:
 				faces = create_faces(vision_frame, bounding_boxes, face_scores, face_landmarks_5)
 				if faces:
 					many_faces.extend(faces)
 					set_static_faces(vision_frame, faces)
-					last_successful_angle = angle  # Update the last successful angle
+					last_successful_angle = angle  # Update for next frame
+					print(f"Found faces at angle {angle}")
 					faces_found = True
-					break  # Exit angle loop if faces found
+					break
 		
 		if not faces_found:
 			print(f"No faces detected in frame {index} after trying all angles")
