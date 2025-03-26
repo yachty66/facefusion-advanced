@@ -144,9 +144,15 @@ python facefusion.py headless-run \
     --face-enhancer-blend 80 \
     --face-swapper-model inswapper_128 \
     --face-detector-model retinaface \
+<<<<<<< Updated upstream
     -s /Users/maxhager/projects/facefusion-advanced/source.png \
     -t /Users/maxhager/projects/facefusion-advanced/five_frame_superman.mp4 \
     -o /Users/maxhager/projects/facefusion-advanced/result_new.mp4
+=======
+    -s /Users/rolandgraser/Desktop/software-projects/facefusion-advanced/images/source.png \
+    -t /Users/rolandgraser/Desktop/software-projects/facefusion-advanced/images/new_superman.mp4 \
+    -o /Users/rolandgraser/Desktop/software-projects/facefusion-advanced/images/result_new.mp4
+>>>>>>> Stashed changes
 
 this seems to work so the problem is that an error occurs with the original video 
 
