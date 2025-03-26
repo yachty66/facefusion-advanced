@@ -101,7 +101,7 @@ def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
 	"""
 	many_faces : List[Face] = []
 
-	for vision_frame in vision_frames:
+	for index, vision_frame in enumerate(vision_frames):
 		print("len(vision_frame): ", len(vision_frame))			
 		if numpy.any(vision_frame):
 			static_faces = get_static_faces(vision_frame)
@@ -127,10 +127,26 @@ def get_many_faces(vision_frames : List[VisionFrame]) -> List[Face]:
 					if faces:
 						many_faces.extend(faces)
 						set_static_faces(vision_frame, faces)
-	if not many_faces:
+					else:
+						print(f"No faces detected in frame {index}")
 
-		print("No faces detected in any of the frame")
+	if not many_faces:
+		print("No faces detected in any of the frames")
 		"""
+		what do i need to do now - every time we dont detect the face we want to run the 90 and 270 command
+
+		we dont want to run this command when we have the 
+
+		lets make a test video with 5 frames maybe?
+
+		1. run video swap command
+		2. in the case a face is not getting detected rerun this frame with the 90 and 270 command
+		3. and then rerun 
+
+
+		
+		
+
 		if we dont detect the face then we have the problem that we dont need 
 
 		
