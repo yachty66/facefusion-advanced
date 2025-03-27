@@ -1,0 +1,14 @@
+*.mp4
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.onnx
+*.pt
+*.pth
+*.bin
+*.safetensors
+.assets/models/
+images/
+temp_backup/
+frames-tiffanies/
