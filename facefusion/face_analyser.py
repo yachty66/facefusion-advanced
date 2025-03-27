@@ -13,6 +13,7 @@ from facefusion.face_store import get_static_faces, set_static_faces
 from facefusion.typing import BoundingBox, Face, FaceLandmark5, FaceLandmarkSet, FaceScoreSet, Score, VisionFrame
 
 _frame_counter = 0
+_last_successful_angle = 0  # Add this global variable
 
 def create_faces(vision_frame : VisionFrame, bounding_boxes : List[BoundingBox], face_scores : List[Score], face_landmarks_5 : List[FaceLandmark5]) -> List[Face]:
 	faces = []
@@ -99,8 +100,8 @@ def get_average_face(faces : List[Face]) -> Optional[Face]:
 #18.22
 def get_many_faces(vision_frames: List[VisionFrame]) -> List[Face]:
 	global _frame_counter
+	global _last_successful_angle  # Add this to access the global variable
 	many_faces: List[Face] = []
-	last_successful_angle = 0  # Start with 0 for first frame
 	
 	for index, vision_frame in enumerate(vision_frames):
 		current_frame = _frame_counter
@@ -116,18 +117,18 @@ def get_many_faces(vision_frames: List[VisionFrame]) -> List[Face]:
 			continue
 		
 		# Start with the last successful angle
-		angles_to_try = [last_successful_angle]
+		angles_to_try = [_last_successful_angle]  # Use global variable
 		# Add remaining angles in a sensible order
-		if last_successful_angle == 0:
+		if _last_successful_angle == 0:  # Use global variable
 			angles_to_try.extend([90, 270])
-		elif last_successful_angle == 90:
+		elif _last_successful_angle == 90:  # Use global variable
 			angles_to_try.extend([0, 270])
-		else:  # last_successful_angle == 270
+		else:  # _last_successful_angle == 270
 			angles_to_try.extend([90, 0])
 			
 		faces_found = False
 		for angle in angles_to_try:
-			print(f"Trying angle {angle} (last successful was {last_successful_angle})")
+			print(f"   Trying angle {angle} (last successful was {_last_successful_angle})")  # Use global
 			state_manager.set_item('face_detector_angles', [angle])
 			
 			if angle == 0:
@@ -140,12 +141,12 @@ def get_many_faces(vision_frames: List[VisionFrame]) -> List[Face]:
 				if faces:
 					many_faces.extend(faces)
 					set_static_faces(vision_frame, faces)
-					last_successful_angle = angle  # Update for next frame
-					print(f"Found faces at angle {angle}")
+					_last_successful_angle = angle  # Update global variable
+					print(f"✅ Found faces at angle {angle} in frame {current_frame}")
 					faces_found = True
 					break
 		
 		if not faces_found:
-			print(f"No faces detected in frame {index} after trying all angles")
+			print(f"❌ No faces detected in frame {index} after trying all angles")
 
 	return many_faces
