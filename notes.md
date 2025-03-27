@@ -164,8 +164,8 @@ python facefusion.py headless-run \
     --face-swapper-model inswapper_128 \
     --face-detector-model retinaface \
     -s /Users/maxhager/projects/facefusion-advanced/source.png \
-    -t /Users/maxhager/projects/facefusion-advanced/superman_4sec_fixed.mp4 \
-    -o /Users/maxhager/projects/facefusion-advanced/result_new.mp4
+    -t /Users/maxhager/projects/facefusion-advanced/fixed_tiffanys.mp4 \
+    -o /Users/maxhager/projects/facefusion-advanced/result_tiffany.mp4
 
 this seems to work so the problem is that an error occurs with the original video 
 
